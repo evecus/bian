@@ -1,10 +1,4 @@
-#==========================================================================
-# 用途：构建 Arch Linux ARM rootfs（通用，不含机型/平台信息）
-#
-# 产出：Arch_{release}_rootfs.tar.gz → 发布到 Release tag: rootfs-arch-{release}
-# 后续：rebuild.yml 下载此 rootfs，通过 -r <dir> -d arch -b <board> 构建固件
-#==========================================================================
-name: RootFS Arch
+name: RootFS Archlinux
 
 on:
   workflow_dispatch:
@@ -39,15 +33,6 @@ on:
           - Europe/London
           - UTC
 
-      extra_packages:
-        description: "额外安装的包，空格分隔"
-        required: false
-        default: ""
-
-      builder_name:
-        description: "构建者签名"
-        required: false
-        default: "mybuilder"
 
 env:
   TZ: UTC
@@ -299,7 +284,7 @@ jobs:
             set -e
             pacman -Sy --noconfirm --needed \
               openssh sudo curl wget ca-certificates tzdata \
-              iproute2 networkmanager \
+              iproute2 \
               net-tools iputils bind \
               wireless_tools wpa_supplicant wireless-regdb \
               bash-completion htop nano nftables bc \
@@ -307,11 +292,6 @@ jobs:
               btrfs-progs e2fsprogs dosfstools \
               lsof file procps-ng cronie \
               rsync logrotate perl
-
-            # 验证关键包
-            for p in openssh networkmanager rsync; do
-              pacman -Qi \${p} >/dev/null 2>&1 || { echo \"ERROR: 关键包 \${p} 安装失败\"; exit 1; }
-            done
           "
 
           # ── 额外包 ────────────────────────────────────────────────────
@@ -385,16 +365,6 @@ jobs:
           ROOT_HASH="$(openssl passwd -6 "${ROOT_PASSWORD}")"
           sudo sed -i "s|^root:[^:]*|root:${ROOT_HASH}|" "${ROOTFS_DIR}/etc/shadow"
 
-          # ── NetworkManager ────────────────────────────────────────────
-          sudo mkdir -p "${ROOTFS_DIR}/etc/NetworkManager"
-          sudo tee "${ROOTFS_DIR}/etc/NetworkManager/NetworkManager.conf" > /dev/null << 'NM_EOF'
-          [main]
-          plugins=keyfile
-          dhcp=internal
-          [keyfile]
-          unmanaged-devices=none
-          NM_EOF
-
           # ── systemd 超时 ──────────────────────────────────────────────
           SYS_CONF="${ROOTFS_DIR}/etc/systemd/system.conf"
           [[ -f "${SYS_CONF}" ]] && {
@@ -405,16 +375,12 @@ jobs:
           # ── enable 基础系统服务（平台脚本/服务由 rebuild 阶段统一注入）──
           sudo chroot "${ROOTFS_DIR}" /bin/bash -c "
             systemctl enable sshd
-            systemctl enable NetworkManager
-            systemctl enable NetworkManager-dispatcher
+            systemctl enable systemd-networkd.service
+            systemctl enable systemd-networkd-wait-online.service
             systemctl enable systemd-timesyncd
             systemctl enable nftables               2>/dev/null || true
 
-            systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
             systemctl disable systemd-pstore.service             2>/dev/null || true
-            systemctl disable systemd-networkd.service           2>/dev/null || true
-            systemctl disable systemd-networkd-wait-online.service 2>/dev/null || true
-            systemctl mask   systemd-networkd.service            2>/dev/null || true
           "
 
           # ── 卸载 chroot 挂载点 ────────────────────────────────────────
@@ -572,11 +538,8 @@ jobs:
         if: ${{ steps.package_rootfs.outputs.status == 'success' && !cancelled() }}
         with:
           tag: "rootfs"
-          name: "RootFS"
+          name: "rootfs"
           artifacts: |
-            ${{ steps.package_rootfs.outputs.TARBALL_PATH }}
-            ${{ steps.package_rootfs.outputs.SHA256_PATH }}
             ${{ steps.wrap_image.outputs.IMG_GZ_PATH }}
-            ${{ steps.wrap_image.outputs.IMG_GZ_SHA256_PATH }}
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
