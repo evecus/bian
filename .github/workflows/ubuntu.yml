@@ -1,9 +1,3 @@
-#==========================================================================
-# 用途：构建 Ubuntu rootfs（通用，不含机型/平台信息）
-#
-# 产出：Ubuntu_{release}_rootfs.tar.gz → 发布到 Release tag: rootfs-ubuntu-{release}
-# 后续：rebuild.yml 下载此 rootfs，通过 -r <dir> -d ubuntu -b <board> 构建固件
-#==========================================================================
 name: RootFS Ubuntu
 
 on:
@@ -39,16 +33,6 @@ on:
           - America/New_York
           - Europe/London
           - UTC
-
-      extra_packages:
-        description: "额外安装的包，空格分隔"
-        required: false
-        default: ""
-
-      builder_name:
-        description: "构建者签名"
-        required: false
-        default: "mybuilder"
 
 env:
   TZ: UTC
@@ -225,17 +209,6 @@ jobs:
                 echo 'ERROR: 关键包安装不完整'
                 exit 1
               }
-              apt-get clean && rm -rf /var/lib/apt/lists/*
-            "
-          fi
-
-          # ── 额外包 ────────────────────────────────────────────────────
-          if [[ -n "${EXTRA_PKGS}" ]]; then
-            echo "▶ 安装额外包: ${EXTRA_PKGS}"
-            sudo chroot "${ROOTFS_DIR}" /bin/bash -c "
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get update -qq
-              apt-get install -y ${EXTRA_PKGS} --no-install-recommends
               apt-get clean && rm -rf /var/lib/apt/lists/*
             "
           fi
@@ -443,11 +416,8 @@ jobs:
         if: ${{ steps.package_rootfs.outputs.status == 'success' && !cancelled() }}
         with:
           tag: "rootfs"
-          name: "RootFS"
+          name: "rootfs"
           artifacts: |
-            ${{ steps.package_rootfs.outputs.TARBALL_PATH }}
-            ${{ steps.package_rootfs.outputs.SHA256_PATH }}
             ${{ steps.wrap_image.outputs.IMG_GZ_PATH }}
-            ${{ steps.wrap_image.outputs.IMG_GZ_SHA256_PATH }}
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
