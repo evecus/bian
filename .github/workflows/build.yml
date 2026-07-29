@@ -408,7 +408,7 @@ jobs:
           echo "build_tag=Armbian_${{ inputs.release_name }}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Rebuild Armbian [ ${{ inputs.release_name }} ]
+      - name: Rebuild [ ${{ inputs.release_name }} ]
         uses: ophub/amlogic-s9xxx-armbian@main
         if: ${{ steps.down.outputs.status == 'success' && !cancelled() }}
         with:
@@ -433,12 +433,3 @@ jobs:
           replaces_artifacts: true
           make_latest: true
           gh_token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            ### Armbian Image Information
-            - Default username: `root`
-            - Default password: `1234`
-            - Install command: `armbian-install`
-            - Update command: `armbian-update`
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
