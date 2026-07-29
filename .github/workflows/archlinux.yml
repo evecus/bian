@@ -376,7 +376,6 @@ jobs:
           sudo chroot "${ROOTFS_DIR}" /bin/bash -c "
             systemctl enable sshd
             systemctl enable systemd-networkd.service
-            systemctl enable systemd-networkd-wait-online.service
             systemctl enable systemd-timesyncd
             systemctl enable nftables               2>/dev/null || true
 
