@@ -512,39 +512,9 @@ jobs:
         uses: ncipollo/release-action@main
         if: ${{ steps.package_rootfs.outputs.status == 'success' && !cancelled() }}
         with:
-          tag: "rootfs-alpine-${{ env.ALPINE_VERSION_ID }}"
-          name: "RootFS · Alpine ${{ env.ALPINE_VERSION_ID }}"
+          tag: "rootfs"
+          name: "rootfs"
           artifacts: |
-            ${{ steps.package_rootfs.outputs.TARBALL_PATH }}
-            ${{ steps.package_rootfs.outputs.SHA256_PATH }}
             ${{ steps.wrap_image.outputs.IMG_GZ_PATH }}
-            ${{ steps.wrap_image.outputs.IMG_GZ_SHA256_PATH }}
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            ## Alpine Linux rootfs（通用，不含机型/平台信息）
-
-            | 参数 | 值 |
-            |------|-----|
-            | Alpine 版本 | `${{ env.ALPINE_VERSION_ID }}`（仓库: `${{ env.ALPINE_REPO_VER }}`） |
-            | 时区 | `${{ env.TZ_VAL }}` |
-            | 构建时间 | `${{ steps.package_rootfs.outputs.BUILT_DATE }}` |
-            | 构建编号 | `#${{ github.run_number }}` |
-
-            ## 特点
-            - 基于 musl libc + OpenRC（非 systemd）
-            - 统一 common-* 脚本通过 OpenRC init 脚本注入
-
-            ## 使用方式
-            在 `rebuild` workflow 的 **rootfs_url** 填入：
-            ```
-            https://github.com/${{ github.repository }}/releases/download/rootfs-alpine-${{ env.ALPINE_VERSION_ID }}/${{ steps.package_rootfs.outputs.TARBALL }}
-            ```
-            并选择 `distro = alpine`，指定目标 `board`。
-
-            ## 附加产物：img.gz（供 ophub/amlogic-s9xxx-armbian 等下游直接复用）
-            本次同时打包了一个伪装成 Armbian 格式（`*-trunk_*.img.gz`）的镜像文件，
-            内含相同的 Alpine rootfs，供依赖 `extract_armbian()` 识别 `.img.gz` 命名规则的下游 workflow 直接使用：
-            ```
-            https://github.com/${{ github.repository }}/releases/download/rootfs-alpine-${{ env.ALPINE_VERSION_ID }}/${{ steps.wrap_image.outputs.IMG_GZ_NAME }}
-            ```
