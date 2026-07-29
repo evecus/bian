@@ -442,7 +442,72 @@ jobs:
           echo "BUILT_DATE=${BUILT_DATE}" >> "${GITHUB_OUTPUT}"
           echo "status=success"           >> "${GITHUB_OUTPUT}"
 
-      # ── 5. 发布 rootfs 到 Release ────────────────────────────────────
+      # ── 5. 将 rootfs 包装成 build.yml (ophub/amlogic-s9xxx-armbian)
+      #        能够识别的 "*-trunk_*.img.gz" 格式，方便下游直接复用 ──
+      - name: Wrap rootfs into a fake Armbian image
+        id: wrap_image
+        if: ${{ steps.package_rootfs.outputs.status == 'success' && !cancelled() }}
+        run: |
+          set -euo pipefail
+          WORK="${RUNNER_TEMP}/wrap"
+          sudo rm -rf "${WORK}" && mkdir -p "${WORK}"
+
+          # rootfs 实际占用大小（MiB）+ 40% 余量 + 512MiB 兜底，
+          # 保证后续 apt/内核替换等操作有足够空间
+          used_mb=$(sudo du -sm "${ROOTFS_DIR}" | awk '{print $1}')
+          img_mb=$(( used_mb * 14 / 10 + 512 ))
+
+          IMG_VERSION="1.0.0"
+          IMG_NAME="Armbian_${IMG_VERSION}-trunk_alpine${ALPINE_VERSION_ID}_arm64.img"
+          IMG_PATH="${WORK}/${IMG_NAME}"
+
+          echo "▶ 创建空白镜像: ${img_mb}MiB"
+          truncate -s "${img_mb}M" "${IMG_PATH}"
+
+          # 单分区即可：extract_armbian() 里若无 p2 会自动回退用 p1
+          parted -s "${IMG_PATH}" mklabel msdos
+          parted -s "${IMG_PATH}" mkpart primary ext4 1MiB 100%
+
+          LOOPDEV=$(sudo losetup -P -f --show "${IMG_PATH}")
+          sudo mkfs.ext4 -F -L ROOTFS "${LOOPDEV}p1"
+
+          MNT="${WORK}/mnt"
+          mkdir -p "${MNT}"
+          sudo mount "${LOOPDEV}p1" "${MNT}"
+
+          echo "▶ 写入 rootfs 内容..."
+          sudo cp -a "${ROOTFS_DIR}/." "${MNT}/"
+
+          # 确认 os-release 含必需字段（extract_armbian 会读取 ID / VERSION_CODENAME）
+          grep -q '^ID=' "${MNT}/etc/os-release"
+          grep -q '^VERSION_CODENAME=' "${MNT}/etc/os-release" || \
+            echo "VERSION_CODENAME=${ALPINE_VERSION_ID}" | sudo tee -a "${MNT}/etc/os-release" > /dev/null
+
+          sync
+          sudo umount "${MNT}"
+          sudo losetup -d "${LOOPDEV}"
+
+          echo "▶ 压缩镜像..."
+          if command -v pigz >/dev/null 2>&1; then
+            pigz -f "${IMG_PATH}"
+          else
+            gzip -f "${IMG_PATH}"
+          fi
+
+          OUT_DIR="${GITHUB_WORKSPACE}/output"
+          mkdir -p "${OUT_DIR}"
+          mv -f "${IMG_PATH}.gz" "${OUT_DIR}/"
+          IMG_GZ_NAME="${IMG_NAME}.gz"
+
+          cd "${OUT_DIR}"
+          sha256sum "${IMG_GZ_NAME}" > "${IMG_GZ_NAME}.sha256"
+
+          echo "IMG_GZ_NAME=${IMG_GZ_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "IMG_GZ_PATH=${OUT_DIR}/${IMG_GZ_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "IMG_GZ_SHA256_PATH=${OUT_DIR}/${IMG_GZ_NAME}.sha256" >> "${GITHUB_OUTPUT}"
+          echo "status=success" >> "${GITHUB_OUTPUT}"
+
+      # ── 6. 发布 rootfs 到 Release ────────────────────────────────────
       - name: Release rootfs
         uses: ncipollo/release-action@main
         if: ${{ steps.package_rootfs.outputs.status == 'success' && !cancelled() }}
@@ -452,6 +517,8 @@ jobs:
           artifacts: |
             ${{ steps.package_rootfs.outputs.TARBALL_PATH }}
             ${{ steps.package_rootfs.outputs.SHA256_PATH }}
+            ${{ steps.wrap_image.outputs.IMG_GZ_PATH }}
+            ${{ steps.wrap_image.outputs.IMG_GZ_SHA256_PATH }}
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
@@ -474,3 +541,10 @@ jobs:
             https://github.com/${{ github.repository }}/releases/download/rootfs-alpine-${{ env.ALPINE_VERSION_ID }}/${{ steps.package_rootfs.outputs.TARBALL }}
             ```
             并选择 `distro = alpine`，指定目标 `board`。
+
+            ## 附加产物：img.gz（供 ophub/amlogic-s9xxx-armbian 等下游直接复用）
+            本次同时打包了一个伪装成 Armbian 格式（`*-trunk_*.img.gz`）的镜像文件，
+            内含相同的 Alpine rootfs，供依赖 `extract_armbian()` 识别 `.img.gz` 命名规则的下游 workflow 直接使用：
+            ```
+            https://github.com/${{ github.repository }}/releases/download/rootfs-alpine-${{ env.ALPINE_VERSION_ID }}/${{ steps.wrap_image.outputs.IMG_GZ_NAME }}
+            ```
