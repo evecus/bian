@@ -1,9 +1,5 @@
-#==========================================================================
-# Description: Build Armbian using releases files
-# Copyright (C) 2021 https://github.com/ophub/amlogic-s9xxx-armbian
-#==========================================================================
 
-name: Build Armbian using releases files
+name: rebuild
 
 on:
   repository_dispatch:
@@ -432,7 +428,7 @@ jobs:
           armbian_size: ${{ inputs.armbian_size }}
           builder_name: ${{ inputs.builder_name }}
 
-      - name: Upload Armbian images to Release
+      - name: Release
         uses: ophub/upload-to-releases@main
         if: ${{ env.PACKAGED_STATUS == 'success' && !cancelled() }}
         with:
@@ -443,12 +439,3 @@ jobs:
           replaces_artifacts: true
           make_latest: true
           gh_token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            ### Armbian Image Information
-            - Default username: `root`
-            - Default password: `1234`
-            - Install command: `armbian-install`
-            - Update command: `armbian-update`
-            ### Applicable Platform
-            - 🐧 `arm64`
-            - 🐋 Docker image: https://hub.docker.com/u/ophub
