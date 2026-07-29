@@ -325,14 +325,12 @@ jobs:
           echo "OUT_DIR=${OUT_DIR}"         >> "${GITHUB_OUTPUT}"
           echo "status=success"             >> "${GITHUB_OUTPUT}"
 
-      - name: Release firmware + rootfs
+      - name: Release rootfs
         uses: ncipollo/release-action@main
         with:
-          tag: "Debian_${{ inputs.debian_release }}_${{ inputs.armbian_kernel }}_${{ github.run_number }}"
-          name: "Debian ${{ inputs.debian_release }} · panther-x2 · ${{ inputs.armbian_kernel }}"
+          tag_name: rootfs
+          name: "rootfs"
           artifacts: |
-            ${{ steps.package_rootfs.outputs.OUT_DIR }}/${{ steps.package_rootfs.outputs.TARBALL }}
             ${{ steps.wrap_image.outputs.OUT_DIR }}/${{ steps.wrap_image.outputs.IMG_GZ_NAME }}
-            ${{ steps.wrap_image.outputs.OUT_DIR }}/${{ steps.wrap_image.outputs.IMG_GZ_NAME }}.sha256
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
