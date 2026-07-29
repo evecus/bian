@@ -1,3 +1,5 @@
+
+
 name: rebuild
 
 on:
@@ -292,6 +294,10 @@ on:
         options:
           - ext4
           - btrfs
+      armbian_size:
+        description: "Image partition size in MiB. Format: 'boot_mb/root_mb' (e.g. 256/2048) or just 'root_mb' (boot stays 512). Minimum: boot>=256, root>=2048. Leave empty for the default (512/3000, ~3.5GB)."
+        required: false
+        default: "256/2048"
       armbian_edition:
         description: "Select image edition type."
         required: false
@@ -320,7 +326,7 @@ jobs:
     permissions:
       contents: write
 
-    name: build
+    name: build-armbian-${{ inputs.release_name }}
 
     steps:
       - name: Checkout
@@ -408,7 +414,7 @@ jobs:
           echo "build_tag=Armbian_${{ inputs.release_name }}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Rebuild [ ${{ inputs.release_name }} ]
+      - name: Rebuild Armbian [ ${{ inputs.release_name }} ]
         uses: ophub/amlogic-s9xxx-armbian@main
         if: ${{ steps.down.outputs.status == 'success' && !cancelled() }}
         with:
@@ -420,6 +426,7 @@ jobs:
           kernel_repo: ${{ inputs.kernel_repo }}
           kernel_usage: ${{ inputs.kernel_usage }}
           armbian_fstype: ${{ inputs.armbian_fstype }}
+          armbian_size: ${{ inputs.armbian_size }}
           builder_name: ${{ inputs.builder_name }}
 
       - name: Upload Armbian images to Release
@@ -433,3 +440,12 @@ jobs:
           replaces_artifacts: true
           make_latest: true
           gh_token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ### Armbian Image Information
+            - Default username: `root`
+            - Default password: `1234`
+            - Install command: `armbian-install`
+            - Update command: `armbian-update`
+            ### Applicable Platform
+            - 🐧 `arm64`
+            - 🐋 Docker image: https://hub.docker.com/u/ophub
