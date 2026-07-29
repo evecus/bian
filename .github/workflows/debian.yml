@@ -1,4 +1,4 @@
-name: debian
+name: RootFS debian
 
 on:
   workflow_dispatch:
