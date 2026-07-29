@@ -1,25 +1,17 @@
-#==========================================================================
-# Description: Build Armbian using releases files
-# Copyright (C) 2021 https://github.com/ophub/amlogic-s9xxx-armbian
-#==========================================================================
-
-name: Build Armbian using releases files
+name: Build
 
 on:
   repository_dispatch:
   workflow_dispatch:
     inputs:
-      set_release:
-        description: "Select OS Release."
+      rootfs_url:
+        description: "Direct download URL of the rootfs image (.img.gz) built by rootfs.yml. This is the ONLY rootfs source used — nothing is auto-detected or downloaded from this repo's own Releases."
+        required: true
+        default: ""
+      release_name:
+        description: "OS release name (only used for labeling the output tag, e.g. bookworm/trixie). Must match what the rootfs actually is."
         required: false
-        default: "all"
-        type: choice
-        options:
-          - all
-          - trixie
-          - bookworm
-          - resolute
-          - noble
+        default: "bookworm"
       armbian_board:
         description: "Select device board."
         required: false
@@ -317,47 +309,18 @@ on:
         options:
           - ophub
           - angel
-      use_custom_rootfs:
-        description: "Use custom rootfs built by rootfs.yml instead of downloading from this repo's own Releases."
-        required: false
-        default: false
-        type: boolean
-      custom_rootfs_tag:
-        description: "Release tag produced by rootfs.yml (e.g. Debian_bookworm_6.12.y_42). Leave empty to auto-pick the latest matching tag."
-        required: false
-        default: ""
 
 env:
   TZ: Etc/UTC
 
 jobs:
-  setup:
-    runs-on: ubuntu-26.04-arm
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Set build matrix based on set_release input
-        id: set-matrix
-        run: |
-          if [[ "${{ inputs.set_release }}" == "all" ]]; then
-            MATRIX='{"include":[{"release":"trixie"},{"release":"bookworm"},{"release":"resolute"},{"release":"noble"}]}'
-          else
-            MATRIX='{"include":[{"release":"${{ inputs.set_release }}"}]}'
-          fi
-          echo "matrix=${MATRIX}" >> "${GITHUB_OUTPUT}"
-
   build:
-    needs: setup
     runs-on: ubuntu-26.04-arm
     if: ${{ github.event.repository.owner.id == github.event.sender.id }}
     permissions:
       contents: write
 
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
-
-    name: build-armbian-${{ matrix.release }}
+    name: build-armbian-${{ inputs.release_name }}
 
     steps:
       - name: Checkout
@@ -408,109 +371,46 @@ jobs:
           df -Th
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Download Armbian from Releases
+      - name: Download rootfs image from the given URL
         id: down
         working-directory: /builder
-        if: ${{ steps.init.outputs.status == 'success' && !cancelled() && inputs.use_custom_rootfs != true }}
+        if: ${{ steps.init.outputs.status == 'success' && !cancelled() }}
         run: |
           armbian_buildpath="build/output/images"
           [[ -d "${armbian_buildpath}" ]] || mkdir -p "${armbian_buildpath}"
           ln -sf /builder/build ${{ github.workspace }}/build
           ln -sf /builder/build /home/runner/work/_actions/ophub/amlogic-s9xxx-armbian/main/build
 
-          # Query the latest release asset via GitHub API
-          latest_version=$(curl -s \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              https://api.github.com/repos/${{ github.repository }}/releases?per_page=20 | \
-              jq -r --arg RTK "Armbian_${{ matrix.release }}_arm64_" \
-              --arg BOARD "-trunk_" \
-              '[.[] | select(.tag_name | contains($RTK))] |
-              map(.assets[] | select(.name | contains($BOARD) and endswith(".img.gz"))) |
-              sort_by(.updated_at) |
-              reverse |
-              .[0] |
-              {data: .updated_at, url: .url, name: .name}')
+          rootfs_url="${{ inputs.rootfs_url }}"
+          [[ -z "${rootfs_url}" ]] && { echo "Error: rootfs_url input is required."; exit 1; }
 
-          [[ -z "${latest_version}" || "${latest_version}" == "null" ]] && {
-              echo "Error: Failed to resolve Armbian image download URL."
-              exit 1
-          }
+          armbian_filename="$(basename "${rootfs_url}")"
+          # Strip any query string from the filename (e.g. presigned URLs)
+          armbian_filename="${armbian_filename%%\?*}"
+          [[ -z "${armbian_filename}" ]] && armbian_filename="rootfs.img.gz"
+          # The downstream action only recognizes *.img / *.img.gz / *.img.xz / *.zip,
+          # so force a sane extension if the URL didn't provide one.
+          case "${armbian_filename}" in
+              *.img|*.img.gz|*.img.xz|*.zip) ;;
+              *) armbian_filename="${armbian_filename}.img.gz" ;;
+          esac
 
-          # Extract download URL and filename
-          latest_url="$(echo ${latest_version} | jq -r '.url')"
-          armbian_filename="$(echo ${latest_version} | jq -r '.name')"
-
-          # Download asset via GitHub API (binary stream)
-          echo "Downloading: ${armbian_filename}"
-          curl -fsSL \
-               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-               -H "Accept: application/octet-stream" \
-               "${latest_url}" \
+          echo "Downloading rootfs image from: ${rootfs_url}"
+          curl -fSL \
+               "${rootfs_url}" \
                -o "${armbian_buildpath}/${armbian_filename}"
           [[ "${?}" -ne "0" ]] && echo "Error: Download failed." && exit 1
+          [[ -s "${armbian_buildpath}/${armbian_filename}" ]] || { echo "Error: Downloaded file is empty."; exit 1; }
 
-          echo "build_tag=Armbian_${{ matrix.release }}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "Downloaded file:"
+          ls -lh "${armbian_buildpath}/${armbian_filename}"
+
+          echo "build_tag=Armbian_${{ inputs.release_name }}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Download custom rootfs image (built by rootfs.yml)
-        id: down_custom
-        working-directory: /builder
-        if: ${{ steps.init.outputs.status == 'success' && !cancelled() && inputs.use_custom_rootfs == true }}
-        run: |
-          armbian_buildpath="build/output/images"
-          [[ -d "${armbian_buildpath}" ]] || mkdir -p "${armbian_buildpath}"
-          ln -sf /builder/build ${{ github.workspace }}/build
-          ln -sf /builder/build /home/runner/work/_actions/ophub/amlogic-s9xxx-armbian/main/build
-
-          # If a tag was given, use it directly; otherwise pick the latest
-          # release whose tag looks like it was produced by rootfs.yml
-          # (Debian_<release>_<kernel>_<run_number>) for this OS release.
-          custom_tag="${{ inputs.custom_rootfs_tag }}"
-          if [[ -n "${custom_tag}" ]]; then
-              release_json=$(curl -s \
-                  -H "Accept: application/vnd.github+json" \
-                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                  "https://api.github.com/repos/${{ github.repository }}/releases/tags/${custom_tag}")
-          else
-              release_json=$(curl -s \
-                  -H "Accept: application/vnd.github+json" \
-                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                  "https://api.github.com/repos/${{ github.repository }}/releases?per_page=50" | \
-                  jq -r --arg RTK "Debian_${{ matrix.release }}_" \
-                  '[.[] | select(.tag_name | startswith($RTK))] | sort_by(.created_at) | reverse | .[0]')
-          fi
-
-          [[ -z "${release_json}" || "${release_json}" == "null" ]] && {
-              echo "Error: No matching rootfs.yml release found for release [ ${{ matrix.release }} ]."
-              echo "Make sure rootfs.yml has been run for this OS release, or set custom_rootfs_tag explicitly."
-              exit 1
-          }
-
-          asset=$(echo "${release_json}" | jq -r \
-              '[.assets[] | select(.name | endswith(".img.gz"))] | sort_by(.updated_at) | reverse | .[0] | {url: .url, name: .name}')
-          [[ -z "${asset}" || "${asset}" == "null" ]] && {
-              echo "Error: Release found but it has no *.img.gz asset. Did rootfs.yml's wrap step run?"
-              exit 1
-          }
-
-          asset_url="$(echo ${asset} | jq -r '.url')"
-          armbian_filename="$(echo ${asset} | jq -r '.name')"
-
-          echo "Downloading custom rootfs image: ${armbian_filename}"
-          curl -fsSL \
-               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-               -H "Accept: application/octet-stream" \
-               "${asset_url}" \
-               -o "${armbian_buildpath}/${armbian_filename}"
-          [[ "${?}" -ne "0" ]] && echo "Error: Download failed." && exit 1
-
-          echo "build_tag=Armbian_${{ matrix.release }}_arm64_${{ inputs.armbian_edition }}_custom_$(date +"%Y.%m")" >> ${GITHUB_ENV}
-          echo "status=success" >> ${GITHUB_OUTPUT}
-
-      - name: Rebuild Armbian [ ${{ matrix.release }} ]
+      - name: Rebuild Armbian [ ${{ inputs.release_name }} ]
         uses: ophub/amlogic-s9xxx-armbian@main
-        if: ${{ (steps.down.outputs.status == 'success' || steps.down_custom.outputs.status == 'success') && !cancelled() }}
+        if: ${{ steps.down.outputs.status == 'success' && !cancelled() }}
         with:
           build_target: armbian
           armbian_path: build/output/images/*.img.gz
