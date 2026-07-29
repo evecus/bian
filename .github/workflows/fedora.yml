@@ -213,7 +213,7 @@ jobs:
           set -euo pipefail
           OUT_DIR="${GITHUB_WORKSPACE}/output"
           mkdir -p "${OUT_DIR}"
-          TARBALL="Debian_${DEBIAN_RELEASE}_rootfs.tar.gz"
+          TARBALL="Fedora_${FEDORA_RELEASE}_rootfs.tar.gz"
           echo "▶ 打包 → ${TARBALL} ..."
           sudo tar -czf "${OUT_DIR}/${TARBALL}" -C "${ROOTFS_DIR}" .
           echo "▶ 大小: $(du -sh ${OUT_DIR}/${TARBALL} | awk '{print $1}')"
@@ -242,7 +242,7 @@ jobs:
           img_mb=$(( used_mb * 14 / 10 + 512 ))
 
           IMG_VERSION="1.0.0"
-          IMG_NAME="Armbian_${IMG_VERSION}-trunk_${DEBIAN_RELEASE}_arm64_${ARMBIAN_KERNEL_VER:-6.12.0}.img"
+          IMG_NAME="Armbian_${IMG_VERSION}-trunk_${FEDORA_RELEASE}_arm64_${ARMBIAN_KERNEL_VER:-6.12.0}.img"
           IMG_PATH="${WORK}/${IMG_NAME}"
 
           echo "▶ 创建空白镜像: ${img_mb}MiB"
@@ -265,7 +265,7 @@ jobs:
           # 确认 os-release 含必需字段（extract_armbian 会读取 ID / VERSION_CODENAME）
           grep -q '^ID=' "${MNT}/etc/os-release"
           grep -q '^VERSION_CODENAME=' "${MNT}/etc/os-release" || \
-            echo "VERSION_CODENAME=${DEBIAN_RELEASE}" | sudo tee -a "${MNT}/etc/os-release" > /dev/null
+            echo "VERSION_CODENAME=${FEDORA_RELEASE}" | sudo tee -a "${MNT}/etc/os-release" > /dev/null
 
           sync
           sudo umount "${MNT}"
