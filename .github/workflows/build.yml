@@ -417,7 +417,7 @@ jobs:
           echo "build_tag=Armbian_${{ inputs.release_name }}_arm64_${{ inputs.armbian_edition }}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Rebuild Armbian [ ${{ inputs.release_name }} ]
+      - name: Rebuild [ ${{ inputs.release_name }} ]
         uses: ./
         if: ${{ steps.down.outputs.status == 'success' && !cancelled() }}
         with:
