@@ -103,7 +103,7 @@ declare -A tags_list
 
 # Initialize the build device
 build_board="all"
-# Set Armbian size (Unit: MiB, boot_mb >= 256, root_mb >= 2048)
+# Set Armbian size (Unit: MiB, boot_mb >= 256, root_mb >= 512)
 boot_mb="512"
 root_mb="3000"
 # Set ROOTFS partition file system type, options: [ ext4 / btrfs ]
@@ -279,9 +279,9 @@ init_var() {
         fi
     }
 
-    # Validate partition sizes (Unit: MiB). Boot must be >= 256 and root >= 2048 to fit
+    # Validate partition sizes (Unit: MiB). Boot must be >= 256 and root >= 512 to fit
     [[ "${boot_mb}" =~ ^[0-9]+$ && "${boot_mb}" -ge 256 ]] || error_msg "Invalid boot partition size: [ ${boot_mb} ]"
-    [[ "${root_mb}" =~ ^[0-9]+$ && "${root_mb}" -ge 2048 ]] || error_msg "Invalid rootfs partition size: [ ${root_mb} ]"
+    [[ "${root_mb}" =~ ^[0-9]+$ && "${root_mb}" -ge 512 ]] || error_msg "Invalid rootfs partition size: [ ${root_mb} ]"
 }
 
 check_data() {
