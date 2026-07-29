@@ -1,4 +1,4 @@
-name: Build
+name: rebuild
 
 on:
   repository_dispatch:
