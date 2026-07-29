@@ -121,13 +121,18 @@ jobs:
           echo "▶ dnf --installroot (Fedora ${FEDORA_RELEASE}) ..."
           sudo mkdir -p "${ROOTFS_DIR}"
           # host 与 target 同为 aarch64，无需 --forcearch/QEMU 交叉架构引导。
-          # DNF5（Fedora 41+）对 --installroot 的行为有变化，加 --use-host-config 保持旧语义。
+          # 注意：DNF5 的 `install` 子命令不接受 --use-host-config（会报 unrecognized arguments）。
+          # 且 host（Ubuntu runner）本身也没有 fedora/updates 仓库配置可供继承，
+          # 因此改为通过 --repofrompath 显式指向 Fedora 官方镜像，并跳过 GPG 校验（installroot 内还没导入 Fedora 签名密钥）。
           sudo dnf -y \
             --releasever="${FEDORA_RELEASE}" \
             --installroot="${ROOTFS_DIR}" \
-            --use-host-config \
             --setopt=install_weak_deps=False \
+            --setopt=reposdir=/dev/null \
+            --repofrompath="fedora,${FEDORA_MIRROR}/releases/${FEDORA_RELEASE}/Everything/aarch64/os/" \
+            --repofrompath="updates,${FEDORA_MIRROR}/updates/${FEDORA_RELEASE}/Everything/aarch64/" \
             --repo=fedora --repo=updates \
+            --nogpgcheck \
             install \
             fedora-release \
             systemd systemd-udev passwd util-linux \
@@ -147,8 +152,11 @@ jobs:
             sudo dnf -y \
               --releasever="${FEDORA_RELEASE}" \
               --installroot="${ROOTFS_DIR}" \
-              --use-host-config \
+              --setopt=reposdir=/dev/null \
+              --repofrompath="fedora,${FEDORA_MIRROR}/releases/${FEDORA_RELEASE}/Everything/aarch64/os/" \
+              --repofrompath="updates,${FEDORA_MIRROR}/updates/${FEDORA_RELEASE}/Everything/aarch64/" \
               --repo=fedora --repo=updates \
+              --nogpgcheck \
               install ${EXTRA_PKGS}
           fi
           # 验证关键包
