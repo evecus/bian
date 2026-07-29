@@ -320,7 +320,7 @@ jobs:
     permissions:
       contents: write
 
-    name: build-armbian-${{ inputs.release_name }}
+    name: build
 
     steps:
       - name: Checkout
