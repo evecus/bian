@@ -1,6 +1,9 @@
+#==========================================================================
+# Description: Build Armbian using releases files
+# Copyright (C) 2021 https://github.com/ophub/amlogic-s9xxx-armbian
+#==========================================================================
 
-
-name: rebuild
+name: Build Armbian using releases files
 
 on:
   repository_dispatch:
@@ -295,9 +298,9 @@ on:
           - ext4
           - btrfs
       armbian_size:
-        description: "Image partition size in MiB. Format: 'boot_mb/root_mb' (e.g. 256/2048) or just 'root_mb' (boot stays 512). Minimum: boot>=256, root>=2048. Leave empty for the default (512/3000, ~3.5GB)."
+        description: "Image partition size in MiB. Format: 'boot_mb/root_mb' (e.g. 256/1024) or just 'root_mb' (boot stays 512). Minimum: boot>=256, root>=512 (lowered from the upstream default of 2048 — make sure this is large enough for your actual rootfs + kernel + modules, or the build will fail later with 'No space left on device'). Leave empty for the default (512/3000, ~3.5GB)."
         required: false
-        default: "256/2048"
+        default: "256/1024"
       armbian_edition:
         description: "Select image edition type."
         required: false
@@ -305,8 +308,6 @@ on:
         type: choice
         options:
           - server
-          - desktop
-          - beta
       builder_name:
         description: "Set Armbian builder signature."
         required: false
@@ -326,7 +327,7 @@ jobs:
     permissions:
       contents: write
 
-    name: build-armbian-${{ inputs.release_name }}
+    name: rebuild
 
     steps:
       - name: Checkout
@@ -384,8 +385,10 @@ jobs:
         run: |
           armbian_buildpath="build/output/images"
           [[ -d "${armbian_buildpath}" ]] || mkdir -p "${armbian_buildpath}"
+          # With `uses: ./`, the action runs directly from this checked-out
+          # repo (github.action_path == github.workspace), so only this one
+          # symlink is needed to point the build output at the expanded disk.
           ln -sf /builder/build ${{ github.workspace }}/build
-          ln -sf /builder/build /home/runner/work/_actions/ophub/amlogic-s9xxx-armbian/main/build
 
           rootfs_url="${{ inputs.rootfs_url }}"
           [[ -z "${rootfs_url}" ]] && { echo "Error: rootfs_url input is required."; exit 1; }
@@ -415,7 +418,7 @@ jobs:
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Rebuild Armbian [ ${{ inputs.release_name }} ]
-        uses: ophub/amlogic-s9xxx-armbian@main
+        uses: ./
         if: ${{ steps.down.outputs.status == 'success' && !cancelled() }}
         with:
           build_target: armbian
