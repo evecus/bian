@@ -474,8 +474,7 @@ jobs:
         uses: ophub/upload-to-releases@main
         if: ${{ steps.info.outputs.status == 'success' && !cancelled() }}
         with:
-          tag: ${{ env.build_tag }}
-          # 只上传 rebuild 生成的固件镜像（文件名前缀为 rootfs 发行版名称），不发布用作输入的 rootfs 镜像
+          tag: firmware
           artifacts: ${{ env.PACKAGED_OUTPUTPATH }}/${{ env.ROOTFS_DISTRO }}_*.img.gz
           allow_updates: true
           remove_artifacts: false
