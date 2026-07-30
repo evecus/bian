@@ -16,7 +16,7 @@ on:
       armbian_board:
         description: "Select device board."
         required: false
-        default: "amlogic"
+        default: "panther-x2"
         type: choice
         options:
           - allwinner
@@ -481,26 +481,3 @@ jobs:
           remove_artifacts: false
           replaces_artifacts: true
           make_latest: true
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            **固件文件**：`${{ env.BUILT_FILENAME }}`
-
-            * Rootfs 来源
-              - 发行版：${{ env.ROOTFS_DISTRO }}
-              - 版本/代号：${{ env.ROOTFS_RELEASE }}
-              - 架构：${{ env.ROOTFS_ARCH }}
-              - 下载文件：`${{ env.ROOTFS_FILENAME }}`
-              - 来源链接：${{ inputs.rootfs_url }}
-
-            * 固件信息
-              - 机型（Board）：${{ env.FW_BOARD }}
-              - 平台（Platform）：${{ env.FW_PLATFORM }}
-              - 内核版本：${{ env.FW_KERNEL }}
-              - 基础版本号：${{ env.FW_VERSION }}
-              - 文件系统类型：${{ inputs.armbian_fstype }}
-              - 镜像分区大小：${{ inputs.armbian_size }}
-              - Builder 签名：${{ inputs.builder_name }}
-
-            * 默认账号
-              - 用户名：root
-              - 密码：1234
