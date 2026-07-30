@@ -48,6 +48,10 @@ inputs:
     description: "Set Armbian builder signature."
     required: false
     default: ""
+  output_name:
+    description: "Set the file name prefix used for the final rebuilt image (e.g. Armbian / Debian / Ubuntu). Defaults to Armbian for backward compatibility."
+    required: false
+    default: ""
   # For compile kernel -----
   kernel_source:
     description: "Select the kernel source code"
@@ -209,6 +213,7 @@ runs:
             [[ -n "${{ inputs.armbian_fstype }}"  ]] && make_args+=(-t "${{ inputs.armbian_fstype }}")
             [[ -n "${{ inputs.armbian_size }}"    ]] && make_args+=(-s "${{ inputs.armbian_size }}")
             [[ -n "${builder_name}"               ]] && make_args+=(-n "${builder_name}")
+            [[ -n "${{ inputs.output_name }}"     ]] && make_args+=(-o "${{ inputs.output_name }}")
             sudo ./rebuild "${make_args[@]}"
 
             cd ${{ github.action_path }}/${armbian_filepath}

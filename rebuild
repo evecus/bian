@@ -112,6 +112,9 @@ rootfs_type="ext4"
 os_type="server"
 # Set Armbian builder signature
 builder_name=""
+# Set the file name prefix used for the final rebuilt image (e.g. Armbian / Debian / Ubuntu).
+# Kept as "Armbian" by default to preserve backward compatibility.
+output_name="Armbian"
 
 # Set font color
 STEPS="[\033[95m STEPS \033[0m]"
@@ -181,7 +184,7 @@ init_var() {
     echo -e "${STEPS} Initializing variables..."
 
     # If it is followed by [ : ], it means that the option requires a parameter value
-    local options="b:r:u:k:a:t:s:n:"
+    local options="b:r:u:k:a:t:s:n:o:"
     parsed_args=$(getopt -o "${options}" -- "${@}")
     [[ ${?} -ne 0 ]] && error_msg "Parameter parsing failed."
     eval set -- "${parsed_args}"
@@ -256,6 +259,14 @@ init_var() {
                 shift 2
             else
                 error_msg "Invalid -n parameter [ ${2} ]!"
+            fi
+            ;;
+        -o | --OutputName)
+            if [[ -n "${2}" ]]; then
+                output_name="${2// /}"
+                shift 2
+            else
+                error_msg "Invalid -o parameter [ ${2} ]!"
             fi
             ;;
         --)
@@ -746,7 +757,7 @@ make_image() {
     # echo -e "${INFO} The [ ${board} ] Armbian image partition status: [ skip:${skip_mb} / boot:${boot_mb} / rootfs:${root_mb} ] MiB."
 
     # Set Armian file name
-    armbian_filename="Armbian_${armbian_rebuild_version}_${PLATFORM}_${board}_${release_codename}_${kernel}_${os_type}_$(date +"%Y.%m.%d").img"
+    armbian_filename="${output_name}_${armbian_rebuild_version}_${PLATFORM}_${board}_${release_codename}_${kernel}_${os_type}_$(date +"%Y.%m.%d").img"
     build_image_file="${tmp_outpath}/${armbian_filename}"
     rm -f "${build_image_file}"
 
