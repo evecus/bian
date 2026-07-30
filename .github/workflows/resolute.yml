@@ -285,9 +285,9 @@ jobs:
           echo "BUILT_DATE=${BUILT_DATE}"           >> "${GITHUB_OUTPUT}"
           echo "status=success"                     >> "${GITHUB_OUTPUT}"
 
-      # ── 5. 将 rootfs 包装成 build.yml (ophub/amlogic-s9xxx-armbian)
-      #        能够识别的 "*-trunk_*.img.gz" 格式，方便下游直接复用 ──
-      - name: Wrap rootfs into a fake Armbian image
+      # ── 5. 将 rootfs 打包成 rebuild 脚本可直接识别的 "*.img.gz" 镜像 ──
+      #        产物文件名使用发行版名称 + 版本信息，不再伪装为 Armbian 镜像 ──
+      - name: Package rootfs into an image
         id: wrap_image
         if: ${{ steps.package_rootfs.outputs.status == 'success' && !cancelled() }}
         run: |
@@ -300,8 +300,7 @@ jobs:
           used_mb=$(sudo du -sm "${ROOTFS_DIR}" | awk '{print $1}')
           img_mb=$(( used_mb * 14 / 10 + 512 ))
 
-          IMG_VERSION="1.0.0"
-          IMG_NAME="Armbian_${IMG_VERSION}-trunk_${UBUNTU_RELEASE}_arm64.img"
+          IMG_NAME="Ubuntu_${UBUNTU_RELEASE}_arm64_rootfs.img"
           IMG_PATH="${WORK}/${IMG_NAME}"
 
           echo "▶ 创建空白镜像: ${img_mb}MiB"
@@ -321,7 +320,7 @@ jobs:
           echo "▶ 写入 rootfs 内容..."
           sudo cp -a "${ROOTFS_DIR}/." "${MNT}/"
 
-          # 确认 os-release 含必需字段（extract_armbian 会读取 ID / VERSION_CODENAME）
+          # 确认 os-release 含必需字段（rebuild 脚本的 extract_armbian 会读取 ID / VERSION_CODENAME）
           grep -q '^ID=' "${MNT}/etc/os-release"
           grep -q '^VERSION_CODENAME=' "${MNT}/etc/os-release" || \
             echo "VERSION_CODENAME=${UBUNTU_RELEASE}" | sudo tee -a "${MNT}/etc/os-release" > /dev/null
