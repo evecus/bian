@@ -481,3 +481,13 @@ jobs:
           replaces_artifacts: true
           make_latest: true
           gh_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release rootfs
+        uses: ncipollo/release-action@main
+        with:
+          tag: firmware
+          name: "firmware"
+          artifacts: |
+            ${{ env.PACKAGED_OUTPUTPATH }}/${{ env.ROOTFS_DISTRO }}_*.img.gz
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
