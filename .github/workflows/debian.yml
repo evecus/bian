@@ -126,10 +126,10 @@ jobs:
             "${DEBIAN_RELEASE}" "${ROOTFS_DIR}" "${DEBIAN_MIRROR}/"
           # ── apt 源 (deb822) ───────────────────────────────────────────
           sudo truncate -s 0 "${ROOTFS_DIR}/etc/apt/sources.list"
-          printf 'Types: deb\nURIs: %s\nSuites: %s %s-updates\nComponents: main contrib non-free non-free-firmware\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' \
+          printf 'Types: deb\nURIs: %s\nSuites: %s %s-updates\nComponents: main contrib non-free\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' \
             "${DEBIAN_MIRROR}" "${DEBIAN_RELEASE}" "${DEBIAN_RELEASE}" \
             | sudo tee    "${ROOTFS_DIR}/etc/apt/sources.list.d/debian.sources" > /dev/null
-          printf '\nTypes: deb\nURIs: https://security.debian.org/debian-security\nSuites: %s-security\nComponents: main contrib non-free non-free-firmware\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' \
+          printf '\nTypes: deb\nURIs: https://security.debian.org/debian-security\nSuites: %s-security\nComponents: main contrib non-free\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' \
             "${DEBIAN_RELEASE}" \
             | sudo tee -a "${ROOTFS_DIR}/etc/apt/sources.list.d/debian.sources" > /dev/null
           # ── 安装基础包 ────────────────────────────────────────────────
