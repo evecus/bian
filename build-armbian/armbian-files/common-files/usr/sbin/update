@@ -1178,13 +1178,11 @@ else
     search_kernel
     [[ "${local_found}" == "no" ]] && download_kernel
     check_kernel
-    [[ "${KERNEL_BACKUP}" != "no" ]] && backup_kernel
     [[ "${download_type}" == "deb" ]] && update_deb_kernel || update_tar_kernel
     [[ "${PLATFORM}" == "amlogic" ]] && {
         update_uboot
         update_initrd_addr
     }
-    update_os_version
 
     # Kernel update successful
     sync && sleep 3
