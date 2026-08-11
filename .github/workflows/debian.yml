@@ -220,6 +220,7 @@ jobs:
           sudo chroot "${ROOTFS_DIR}" systemctl disable NetworkManager-wait-online.service 2>/dev/null || true
           sudo chroot "${ROOTFS_DIR}" systemctl disable e2scrub_reap.service              2>/dev/null || true
           sudo chroot "${ROOTFS_DIR}" systemctl disable systemd-pstore.service            2>/dev/null || true
+          sudo chroot "${ROOTFS_DIR}" truncate -s 0 /etc/motd
           # ── uInitrd 钩子 ──────────────────────────────────────────────
           sudo mkdir -p "${ROOTFS_DIR}/etc/initramfs/post-update.d"
           echo 'IyEvYmluL2Jhc2ggLWUKdGVtcG5hbWU9Ii9ib290L3VJbml0cmQtJDEiCm1raW1hZ2UgLUEgYXJtNjQgLU8gbGludXggLVQgcmFtZGlzayAtQyBnemlwIC1uIHVJbml0cmQgLWQgIiQyIiAiJHt0ZW1wbmFtZX0iCmxuIC1zZnYgIiQoYmFzZW5hbWUgXCIke3RlbXBuYW1lfVwiKSIgL2Jvb3QvdUluaXRyZCB8fCBtdiAtdiAiJHt0ZW1wbmFtZX0iIC9ib290L3VJbml0cmQKZXhpdCAwCg==' \
