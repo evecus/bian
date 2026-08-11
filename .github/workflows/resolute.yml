@@ -206,7 +206,6 @@ jobs:
           sudo chroot "${ROOTFS_DIR}" systemctl enable NetworkManager-dispatcher
           sudo chroot "${ROOTFS_DIR}" systemctl enable chrony
           sudo chroot "${ROOTFS_DIR}" systemctl enable nftables 2>/dev/null || true
-          sudo chroot "${ROOTFS_DIR}" systemctl enable systemd-resolved.service
 
           # ── Ubuntu 特有：禁用 snapd / unattended-upgrades ─────────────
           sudo chroot "${ROOTFS_DIR}" bash -c "
@@ -230,7 +229,7 @@ jobs:
           fi
 
           # ── disable 不需要的服务 ──────────────────────────────────────
-          for svc in networking NetworkManager-wait-online e2scrub_reap systemd-pstore; do
+          for svc in networking NetworkManager-wait-online e2scrub_reap systemd-pstore systemd-resolved; do
             sudo chroot "${ROOTFS_DIR}" systemctl disable "${svc}.service" 2>/dev/null || true
           done
 
