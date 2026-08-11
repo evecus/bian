@@ -203,7 +203,6 @@ jobs:
                 wireless-regdb rsync perl \
                 --no-install-recommends
               apt-get install -y wpasupplicant
-              apt-get install -y systemd-resolved --no-install-recommends
 
               dpkg -l openssh-server network-manager rsync | grep -c '^ii' | grep -q '^3$' || {
                 echo 'ERROR: 关键包安装不完整'
@@ -256,7 +255,6 @@ jobs:
           sudo chroot "${ROOTFS_DIR}" systemctl enable NetworkManager-dispatcher
           sudo chroot "${ROOTFS_DIR}" systemctl enable chrony
           sudo chroot "${ROOTFS_DIR}" systemctl enable nftables 2>/dev/null || true
-          sudo chroot "${ROOTFS_DIR}" systemctl enable systemd-resolved.service
 
           # ── Ubuntu 特有：禁用 snapd / unattended-upgrades ────────────
           sudo chroot "${ROOTFS_DIR}" bash -c "
