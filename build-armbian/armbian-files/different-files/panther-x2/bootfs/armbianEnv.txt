@@ -1,5 +1,5 @@
-verbosity=7
-bootlogo=true
+verbosity=1
+bootlogo=false
 fdtfile=rockchip/rk3566-panther-x2.dtb
 rootdev=/dev/mmcblk0p2
 rootfstype=ext4
