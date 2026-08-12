@@ -11,6 +11,7 @@ on:
         options:
           - noble
           - jammy
+          - resolute
 
       root_password:
         description: "root 密码"
@@ -81,11 +82,16 @@ jobs:
           echo "TZ_VAL=${{ inputs.timezone               || 'Asia/Shanghai' }}" >> "${GITHUB_ENV}"
           echo "EXTRA_PKGS=${{ inputs.extra_packages     || '' }}"       >> "${GITHUB_ENV}"
 
-          # jammy / noble 专有标志
+          # jammy / noble / resolute 专有标志
           if [[ "${UBUNTU_RELEASE}" == "jammy" ]]; then
             echo "IS_JAMMY=true"  >> "${GITHUB_ENV}"
           else
             echo "IS_JAMMY=false" >> "${GITHUB_ENV}"
+          fi
+          if [[ "${UBUNTU_RELEASE}" == "resolute" ]]; then
+            echo "IS_RESOLUTE=true"  >> "${GITHUB_ENV}"
+          else
+            echo "IS_RESOLUTE=false" >> "${GITHUB_ENV}"
           fi
           echo "status=success" >> "${GITHUB_OUTPUT}"
 
@@ -158,6 +164,16 @@ jobs:
             sudo sed -i "s|MIRROR_PLACEHOLDER|${UBUNTU_MIRROR}|g"   "${ROOTFS_DIR}/etc/apt/sources.list.d/ubuntu.sources"
             sudo sed -i "s|RELEASE_PLACEHOLDER|${UBUNTU_RELEASE}|g" "${ROOTFS_DIR}/etc/apt/sources.list.d/ubuntu.sources"
             sudo sed -i 's/^[[:space:]]*//' "${ROOTFS_DIR}/etc/apt/sources.list.d/ubuntu.sources"
+          fi
+
+          # ── resolute(26.04) 强制使用 initramfs-tools 替代默认 dracut ──
+          if [[ "${IS_RESOLUTE}" == "true" ]]; then
+            sudo chroot "${ROOTFS_DIR}" /bin/bash -c "
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq
+              apt-get install -y dracut- initramfs-tools --no-install-recommends 2>/dev/null || \
+              apt-get install -y initramfs-tools --no-install-recommends
+            "
           fi
 
           # ── 安装基础包 ────────────────────────────────────────────────
